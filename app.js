@@ -24,7 +24,7 @@ if (
   (process.env.POSTGRES_CONNECTION_STRING && process.env.POSTGRES_CONNECTION_STRING.includes('azure.com')) ||
   (process.env.POSTGRES_CONNECTION_STRING && process.env.POSTGRES_CONNECTION_STRING.includes('sslmode=require'))
 ) {
-  dbConfig.ssl = { rejectUnauthorized: true };
+  dbConfig.ssl = { rejectUnauthorized: false };
 }
 
 const pool = new Pool(dbConfig);
@@ -96,7 +96,7 @@ async function ensureSchema() {
 }
 
 function getBlobServiceClient() {
-  
+
   if (!connectionString) {
     throw new Error('Missing AZURE_STORAGE_CONNECTION_STRING');
   }
