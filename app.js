@@ -20,10 +20,14 @@ const storageContainerName = process.env.STORAGE_CONTAINER_NAME || 'insurance-do
 const ocrFunctionUrl = process.env.OCR_FUNCTION_URL;
 
 const dbConfig = { connectionString: process.env.POSTGRES_CONNECTION_STRING };
-// Azure PostgreSQL requires SSL. We configure rejectUnauthorized for the pg module.
-if (process.env.POSTGRES_CONNECTION_STRING && process.env.POSTGRES_CONNECTION_STRING.includes('sslmode=require')) {
+
+if (
+  (process.env.POSTGRES_CONNECTION_STRING && process.env.POSTGRES_CONNECTION_STRING.includes('azure.com')) ||
+  (process.env.POSTGRES_CONNECTION_STRING && process.env.POSTGRES_CONNECTION_STRING.includes('sslmode=require'))
+) {
   dbConfig.ssl = { rejectUnauthorized: false };
 }
+
 const pool = new Pool(dbConfig);
 
 const upload = multer({ storage: multer.memoryStorage() });

@@ -86,14 +86,10 @@ resource "azurerm_storage_account" "storage" {
   account_kind                 = "StorageV2"
   https_traffic_only_enabled   = true
   allow_nested_items_to_be_public = false
-  
-  # Fix 1: Enable network rules so Terraform can create the container locally
-  public_network_access_enabled = true 
-
+  public_network_access_enabled = true # Terraform needs this to create the container locally
+ 
   network_rules {
-    default_action = "Deny"
-    bypass         = ["AzureServices"] # Fix 4: Allow Azure services (like Function Apps) to access storage
-    ip_rules       = ["167.103.54.253"] # TODO: Replace with your actual public IP
+    default_action = "Allow"
   }
 }
 
@@ -108,7 +104,7 @@ resource "azurerm_servicebus_namespace" "sb" {
   location            = azurerm_resource_group.main.location
   resource_group_name = azurerm_resource_group.main.name
   sku                 = var.service_bus_sku
-  public_network_access_enabled = true
+  public_network_access_enabled = true # Standard SKU doesn't support Private Endpoints/Network restrictions
 }
 
 resource "azurerm_servicebus_queue" "email_queue" {
@@ -189,9 +185,9 @@ resource "azurerm_linux_web_app" "app" {
     "STORAGE_ACCOUNT_NAME"       = azurerm_storage_account.storage.name
     "STORAGE_ACCOUNT_KEY"        = azurerm_storage_account.storage.primary_access_key
     "STORAGE_CONTAINER_NAME"     = azurerm_storage_container.insurance_docs.name
-    "POSTGRES_CONNECTION_STRING" = "postgresql://${var.postgres_admin_username}:${var.postgres_admin_password}@${azurerm_postgresql_flexible_server.postgres.fqdn}:5432/${var.postgres_db_name}"
+    "POSTGRES_CONNECTION_STRING" = "postgresql://${var.postgres_admin_username}:${var.postgres_admin_password}@${azurerm_postgresql_flexible_server.postgres.fqdn}:5432/${var.postgres_db_name}?sslmode=require" # Added sslmode=require
     "OCR_FUNCTION_URL"           = "https://${local.function_app_name}.azurewebsites.net/api/ocr"
-    "FORM_RECOGNIZER_ENDPOINT"   = azurerm_cognitive_account.form_recognizer.endpoint
+    "FORM_RECOGNIZER_ENDPOINT"   = azurerm_cognitive_account.form_recognizer.endpoint # Note: If you privatize Form Recognizer, ensure this endpoint resolves via private DNS
   }
 }
 
@@ -221,9 +217,8 @@ resource "azurerm_linux_function_app" "function" {
     "STORAGE_CONTAINER_NAME"        = azurerm_storage_container.insurance_docs.name
     "SERVICE_BUS_CONNECTION_STRING" = azurerm_servicebus_namespace.sb.default_primary_connection_string
     "EMAIL_QUEUE_NAME"              = var.email_queue_name
-    "FORM_RECOGNIZER_ENDPOINT"      = azurerm_cognitive_account.form_recognizer.endpoint
     "FORM_RECOGNIZER_API_KEY"       = azurerm_cognitive_account.form_recognizer.primary_access_key
-    "POSTGRES_CONNECTION_STRING"    = "postgresql://${var.postgres_admin_username}:${var.postgres_admin_password}@${azurerm_postgresql_flexible_server.postgres.fqdn}:5432/${var.postgres_db_name}"
+    "POSTGRES_CONNECTION_STRING"    = "postgresql://${var.postgres_admin_username}:${var.postgres_admin_password}@${azurerm_postgresql_flexible_server.postgres.fqdn}:5432/${var.postgres_db_name}?sslmode=require"
     "EMAIL_USER"                    = var.email_user
     "EMAIL_PASSWORD"                = var.email_password
   }
@@ -231,11 +226,6 @@ resource "azurerm_linux_function_app" "function" {
 
 resource "azurerm_private_dns_zone" "blob" {
   name                = "privatelink.blob.core.windows.net"
-  resource_group_name = azurerm_resource_group.main.name
-}
-
-resource "azurerm_private_dns_zone" "servicebus" {
-  name                = "privatelink.servicebus.windows.net"
   resource_group_name = azurerm_resource_group.main.name
 }
 
@@ -267,20 +257,6 @@ resource "azurerm_private_endpoint" "storage" {
     is_manual_connection           = false
   }
 }
-
-# resource "azurerm_private_endpoint" "servicebus" {
-#   name                = "servicebus-pe"
-#   location            = azurerm_resource_group.main.location
-#   resource_group_name = azurerm_resource_group.main.name
-#   subnet_id           = azurerm_subnet.private_endpoints.id
-
-#   private_service_connection {
-#     name                           = "servicebus-psc"
-#     private_connection_resource_id = azurerm_servicebus_namespace.sb.id
-#     subresource_names              = ["namespace"]
-#     is_manual_connection           = false
-#   }
-# }
 
 resource "azurerm_private_endpoint" "cognitive" {
   name                = "cognitive-pe"
@@ -314,14 +290,6 @@ resource "azurerm_private_dns_zone_virtual_network_link" "storage" {
   name                  = "storage-link"
   resource_group_name   = azurerm_resource_group.main.name
   private_dns_zone_name = azurerm_private_dns_zone.blob.name
-  virtual_network_id    = azurerm_virtual_network.main.id
-  registration_enabled  = false
-}
-
-resource "azurerm_private_dns_zone_virtual_network_link" "servicebus" {
-  name                  = "servicebus-link"
-  resource_group_name   = azurerm_resource_group.main.name
-  private_dns_zone_name = azurerm_private_dns_zone.servicebus.name
   virtual_network_id    = azurerm_virtual_network.main.id
   registration_enabled  = false
 }
