@@ -126,6 +126,9 @@ app.get('/api/health', (req, res) => {
 
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required' });
+  }
   if (email === 'demo@bank.com' && password === 'Password123') {
     return res.json({
       user: {
@@ -142,6 +145,7 @@ app.get('/api/accounts', async (req, res) => {
     const result = await pool.query('SELECT id, type, balance, currency FROM accounts WHERE user_email = $1', ['demo@bank.com']);
     return res.json(result.rows);
   } catch (error) {
+    console.error('Accounts fetch error:', error);
     return res.status(500).json({ error: 'Failed to fetch accounts' });
   }
 });
@@ -151,6 +155,7 @@ app.get('/api/transactions', async (req, res) => {
     const result = await pool.query('SELECT id, description, amount, type, created_at FROM transactions WHERE user_email = $1 ORDER BY created_at DESC LIMIT 10', ['demo@bank.com']);
     return res.json(result.rows);
   } catch (error) {
+    console.error('Transactions fetch error:', error);
     return res.status(500).json({ error: 'Failed to fetch transactions' });
   }
 });
@@ -160,6 +165,7 @@ app.get('/api/insurance', async (req, res) => {
     const result = await pool.query('SELECT id, full_name, user_email, status, age, premium, email_sent, created_at FROM insurance_requests WHERE user_email = $1 ORDER BY created_at DESC', ['demo@bank.com']);
     return res.json(result.rows);
   } catch (error) {
+    console.error('Insurance fetch error:', error);
     return res.status(500).json({ error: 'Failed to fetch insurance requests' });
   }
 });
@@ -173,7 +179,9 @@ app.post('/api/insurance/request', upload.single('document'), async (req, res) =
       return res.status(400).json({ error: 'Full name, email, and a document file are required.' });
     }
 
-    const blobName = `${uuidv4()}-${file.originalname}`;
+    // Sanitize file name to avoid issues with special characters
+    const safeFileName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const blobName = `${uuidv4()}-${safeFileName}`;
     await uploadToBlob(blobName, file.buffer, file.mimetype);
 
     const result = await pool.query(
@@ -182,9 +190,13 @@ app.post('/api/insurance/request', upload.single('document'), async (req, res) =
     );
 
     const requestId = result.rows[0].id;
-    await callOcrFunction(requestId, blobName, email);
+    
+    // Non-blocking OCR call
+    callOcrFunction(requestId, blobName, email).catch(ocrError => {
+      console.error(`OCR processing failed for request ${requestId}:`, ocrError.message || ocrError);
+    });
 
-    return res.json({ requestId, status: 'Pending' });
+    return res.status(202).json({ requestId, status: 'Pending', message: 'Insurance request submitted.' });
   } catch (error) {
     console.error('Insurance request failed:', error.message || error);
     return res.status(500).json({ error: 'Failed to submit insurance request.' });

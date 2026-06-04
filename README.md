@@ -1,191 +1,119 @@
-# Sinan Banking Demo App
+# KYC & Insurance Demo Application
 
-This repo contains a simple banking web app designed to demonstrate:
+This project is a web application that demonstrates a simple banking dashboard and an insurance request submission workflow. It's designed to showcase a modern, decoupled architecture using Node.js and various Azure services.
 
-- Azure App Service hosting a frontend and backend API
-- Azure Storage Blob for insurance document uploads
-- Azure Function App for OCR using Form Recognizer
-- Azure Service Bus for email notification delivery
-- Azure PostgreSQL Flexible Server for application data
-- Private endpoints and VNet integration for non-public resources
+## Architecture Overview
 
-## Repository layout
+The application is composed of a frontend, a backend API, and several serverless components running on Azure.
 
-- `app.js` — Express API server and static site host
-- `public/` — simple banking UI with HTML, CSS, and JavaScript
-- `functions/` — Azure Functions app with OCR and Service Bus email sender
-- `db/init.sql` — PostgreSQL schema for users, accounts, transactions, and insurance requests
-- `.env.example` — example environment variables for local development
+*   **Frontend**: A single-page application built with HTML, CSS (Tailwind CSS), and vanilla JavaScript. It provides the user interface for logging in, viewing account details, and submitting insurance requests.
+*   **Backend API**: A Node.js application using the Express framework. It serves the frontend and provides API endpoints for user authentication, data retrieval, and file uploads.
+*   **Database**: An Azure Database for PostgreSQL instance stores all user, account, transaction, and insurance request data.
 
-## Resource names
+### Azure Services
 
-- Resource group: `sinan-rg1`
-- App Service: `sinanwa1`
-- Function App: `sinanaf1`
-- Storage Account: `sinansa1`
-- Service Bus namespace: `sinansb1`
-- Service Bus queue: `insurance-email-queue`
-- PostgreSQL Flexible Server: `sinanpg1`
-- Form Recognizer / Cognitive Services: `sinanfr1`
-- VNet: `sinan-vnet1`
+*   **Azure App Service**: Hosts the main Node.js backend application.
+*   **Azure Blob Storage**: Securely stores documents uploaded by users for their insurance requests.
+*   **Azure Functions**:
+    *   An **OCR Function** is triggered after a document is uploaded. It uses Azure Form Recognizer to extract text and determine the applicant's age.
+    *   An **Email Function** is triggered by a message on a Service Bus queue. It sends a confirmation email to the user with their calculated premium.
+*   **Azure Form Recognizer**: A cognitive service that analyzes document content to extract key information (like age).
+*   **Azure Service Bus**: A message queue used to decouple the OCR process from the email notification process, ensuring reliability.
 
-## Local setup
+## Features
 
-1. Install dependencies in the repo root:
+*   **User Authentication**: A simple email and password login for a demo user.
+*   **Banking Dashboard**: View mock bank accounts and recent transactions.
+*   **Insurance Request Submission**: Users can fill out a form and upload an identity document (e.g., a driver's license).
+*   **Asynchronous OCR Processing**: Document analysis happens in the background without blocking the UI. The user receives an immediate confirmation that their request was submitted.
+*   **Automated Premium Calculation**: The OCR function extracts the user's age and calculates a corresponding insurance premium.
+*   **Email Notifications**: Users receive an email with their premium details once processing is complete.
 
-```powershell
-cd c:\Users\307468\Azure\banking
-npm install
-```
+## Local Setup & Configuration
 
-2. Install dependencies for Azure Functions:
+### Prerequisites
 
-```powershell
-cd functions
-npm install
-```
+*   [Node.js](https://nodejs.org/) (LTS version recommended)
+*   [Git](https://git-scm.com/)
+*   An Azure Subscription to deploy the required services.
 
-3. Copy `.env.example` to `.env` and populate the values.
+### Installation
 
-4. Start the local app:
+1.  Clone the repository:
+    ```sh
+    git clone <your-repository-url>
+    cd kyc
+    ```
 
-```powershell
+2.  Install the dependencies:
+    ```sh
+    npm install
+    ```
+
+3.  Create a `.env` file in the root of the `kyc` folder and add the following environment variables. These values will come from your deployed Azure resources.
+
+    ```env
+    # PostgreSQL
+    POSTGRES_CONNECTION_STRING="postgres://user:password@hostname.postgres.database.azure.com:5432/database?sslmode=require"
+
+    # Azure Storage
+    STORAGE_ACCOUNT_NAME="yourstorageaccountname"
+    STORAGE_ACCOUNT_KEY="yourstorageaccountkey"
+    STORAGE_CONTAINER_NAME="insurance-docs"
+
+    # Azure Function URL for OCR
+    OCR_FUNCTION_URL="https://your-function-app.azurewebsites.net/api/ocr-function-name"
+
+    # Server Port
+    PORT=8080
+    ```
+
+### Running Locally
+
+To start the application locally, run:
+
+```sh
 npm start
 ```
 
-5. Open `http://localhost:8080`.
+The application will be available at `http://localhost:8080`.
 
-## Azure deployment notes
+## Terraform Deployment
 
-### App Service
+This project includes Terraform configuration to automate the provisioning of all required Azure infrastructure.
 
-- Deploy the root of this repo to `sinanwa1`.
-- The web app uses `app.js` and serves the frontend from `public/`.
-- Configure application settings from `.env.example` values.
+### Resources Created
 
-### Functions
+The Terraform scripts will create the following resources:
 
-- Deploy the `functions/` folder to `sinanaf1`.
-- Create a `FUNCTIONS_WORKER_RUNTIME` setting with value `node`.
-- Add the function app settings from `functions/local.settings.json.example`.
+*   Resource Group
+*   Azure App Service Plan and App Service
+*   Azure Database for PostgreSQL (Flexible Server)
+*   Azure Storage Account (for Blob Storage)
+*   Azure Function App (for OCR and Email functions)
+*   Azure Service Bus (Namespace and Queue)
+*   Azure Form Recognizer (Cognitive Services Account)
+*   Application Insights (for monitoring)
 
-### Storage
+### Deployment Steps
 
-- Create a Storage Account named `sinansa1`.
-- Create a private blob container named `insurance-docs`.
-- Grant the Function App and App Service access via private endpoints or managed identity.
+1.  Navigate to the `terraform` directory within the project.
 
-### Service Bus
+2.  (Optional) Create a `terraform.tfvars` file to override default variable values, such as resource names or locations.
 
-- Create a Service Bus namespace named `sinansb1`.
-- Create a queue named `insurance-email-queue`.
-- Add the queue connection string to the Function App settings as `SERVICE_BUS_CONNECTION_STRING`.
+3.  Initialize Terraform:
+    ```sh
+    terraform init
+    ```
 
-### PostgreSQL
+4.  Review the execution plan:
+    ```sh
+    terraform plan
+    ```
 
-- Create PostgreSQL Flexible Server named `sinanpg1`.
-- Use private endpoint / VNet integration.
-- Create a database named `bankingdb`.
-- Use `db/init.sql` to initialize schema.
+5.  Apply the configuration to create the Azure resources:
+    ```sh
+    terraform apply -auto-approve
+    ```
 
-### Email
-
-- Gmail address: `sinanlw95@gmail.com`
-- Use an app password or allow SMTP access from your account.
-- Set `EMAIL_USER` and `EMAIL_PASSWORD` in the function app settings.
-
-## Azure Portal deployment steps
-
-1. Create resource group `sinan-rg1` in `eastus2`.
-2. Create the VNet `sinan-vnet1` with subnets:
-   - `app-integration-subnet` for App Service and Function App VNet integration
-   - `private-endpoint-subnet` for private endpoints
-   - `postgres-subnet` delegated to `Microsoft.DBforPostgreSQL/flexibleServers`
-3. Create Storage Account `sinansa1`:
-   - Kind: StorageV2, Performance: Standard, Replication: LRS
-   - Enable secure transfer and disable public access
-   - Disable public network access
-   - Create container `insurance-docs`
-4. Create Service Bus namespace `sinansb1` and queue `insurance-email-queue`:
-   - SKU: Standard
-   - Disable public network access
-5. Create PostgreSQL Flexible Server `sinanpg1`:
-   - Version: 14, SKU: Standard_B1ms
-   - Storage: 32 GB
-   - Private network access enabled
-   - Use delegated subnet `postgres-subnet`
-   - Create database `bankingdb`
-6. Create Cognitive Services account `sinanfr1`:
-   - Kind: CognitiveServices, SKU: S0
-   - Disable public network access if using private endpoints
-7. Create App Service plan `sinanplan1` (Linux, Node 18)
-8. Create Web App `sinanwa1`:
-   - Runtime stack: Node 18
-   - Use `sinanplan1`
-   - Configure application settings from `.env.example`
-   - Set `OCR_FUNCTION_URL` to `https://sinanaf1.azurewebsites.net/api/ocr`
-9. Create Function App `sinanaf1` (Linux, Node 18):
-   - Use `sinanplan1`
-   - Set `FUNCTIONS_WORKER_RUNTIME=node`
-   - Add settings from `functions/local.settings.json.example`
-   - Use the same Storage Account `sinansa1` for `AzureWebJobsStorage`
-10. Create private endpoints for:
-   - Storage account (`privatelink.blob.core.windows.net`)
-   - Service Bus namespace (`privatelink.servicebus.windows.net`)
-   - PostgreSQL Flexible Server (`privatelink.postgres.database.azure.com`)
-   - Cognitive Services (`privatelink.cognitiveservices.azure.com`)
-   - Function App (`privatelink.azurewebsites.net`)
-11. Configure DNS for private endpoints:
-   - Add private DNS zones for each service
-   - Link private DNS zones to `sinan-vnet1`
-12. Use the default App Service hostname `sinanwa1.azurewebsites.net` for public access.
-13. Deploy the repo to `sinanwa1` and the `functions` folder to `sinanaf1`.
-
-## Terraform deployment
-
-1. Copy the Terraform example values:
-
-```powershell
-cd c:\Users\307468\Azure\banking\terraform
-Copy-Item terraform.tfvars.example terraform.tfvars
-```
-
-2. Edit `terraform.tfvars` and populate:
-   - `postgres_admin_password`
-   - `form_recognizer_api_key`
-   - `email_password`
-
-3. Initialize Terraform:
-
-```powershell
-terraform init
-```
-
-4. Review the plan:
-
-```powershell
-terraform plan -var-file=terraform.tfvars
-```
-
-5. Apply the deployment:
-
-```powershell
-terraform apply -var-file=terraform.tfvars
-```
-
-6. After apply, update the Function App settings with the actual Form Recognizer and Gmail secrets if necessary.
-
-## How the flow works
-
-1. User visits `sinanwa1.azurewebsites.net`.
-2. The banking UI calls the App Service backend.
-3. Insurance document uploads are saved to Azure Blob Storage.
-4. App Service submits an OCR request to the HTTP-triggered function.
-5. Function App reads the blob, uses Form Recognizer, computes the premium, and queues an email request.
-6. The Service Bus-triggered function sends an email notification via Gmail.
-
-## Notes
-
-- Only `sinanwa1` is publicly exposed.
-- All storage, database, and Service Bus traffic should remain private behind Azure private endpoints.
-- The code is intentionally simple and ready for Azure Portal deployment.
+After the deployment is complete, Terraform will output the necessary values (like connection strings and hostnames) that you need to update in your `.env` file or in the App Service application settings.
