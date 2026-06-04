@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
 const axios = require('axios');
-const { BlobServiceClient, StorageSharedKeyCredential } = require('@azure/storage-blob');
+const { BlobServiceClient } = require('@azure/storage-blob');
 const { Pool } = require('pg');
 const { v4: uuidv4 } = require('uuid');
 require('dotenv').config();
@@ -14,8 +14,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-const storageAccountName = process.env.STORAGE_ACCOUNT_NAME;
-const storageAccountKey = process.env.STORAGE_ACCOUNT_KEY;
+const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
 const storageContainerName = process.env.STORAGE_CONTAINER_NAME || 'insurance-docs';
 const ocrFunctionUrl = process.env.OCR_FUNCTION_URL;
 
@@ -25,7 +24,7 @@ if (
   (process.env.POSTGRES_CONNECTION_STRING && process.env.POSTGRES_CONNECTION_STRING.includes('azure.com')) ||
   (process.env.POSTGRES_CONNECTION_STRING && process.env.POSTGRES_CONNECTION_STRING.includes('sslmode=require'))
 ) {
-  dbConfig.ssl = { rejectUnauthorized: false };
+  dbConfig.ssl = { rejectUnauthorized: true };
 }
 
 const pool = new Pool(dbConfig);
@@ -97,13 +96,12 @@ async function ensureSchema() {
 }
 
 function getBlobServiceClient() {
-  if (!storageAccountName || !storageAccountKey) {
-    throw new Error('Missing STORAGE_ACCOUNT_NAME or STORAGE_ACCOUNT_KEY');
+  
+  if (!connectionString) {
+    throw new Error('Missing AZURE_STORAGE_CONNECTION_STRING');
   }
-  return new BlobServiceClient(
-    `https://${storageAccountName}.blob.core.windows.net`,
-    new StorageSharedKeyCredential(storageAccountName, storageAccountKey)
-  );
+
+  return BlobServiceClient.fromConnectionString(connectionString);
 }
 
 async function uploadToBlob(blobName, buffer, contentType) {
