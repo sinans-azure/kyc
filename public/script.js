@@ -19,21 +19,17 @@ const formatCurrency = (amount, currency = 'USD') => {
 };
 
 function showSection(section) {
-  loginScreen.classList.add('hidden');
-  dashboardScreen.classList.add('hidden');
-  insuranceScreen.classList.add('hidden');
-  section.classList.remove('hidden');
-  // Add animation class
-  section.classList.add('screen-section');
+  loginScreen.classList.remove('active');
+  dashboardScreen.classList.remove('active');
+  insuranceScreen.classList.remove('active');
+  section.classList.add('active');
 }
 
 function setActiveTab(tab) {
-  navDashboard.classList.remove('btn-primary');
-  navInsurance.classList.remove('btn-primary');
-  navDashboard.classList.add('btn-secondary');
-  navInsurance.classList.add('btn-secondary');
-  tab.classList.remove('btn-secondary');
-  tab.classList.add('btn-primary');
+  navDashboard.classList.remove('active');
+  navInsurance.classList.remove('active');
+  navLogin.classList.remove('active');
+  tab.classList.add('active');
 }
 
 async function fetchJson(url, options) {
@@ -42,55 +38,58 @@ async function fetchJson(url, options) {
 }
 
 async function loadDashboard() {
-  accountList.innerHTML = '<p class="text-sm text-gray-600">Loading accounts...</p>';
-  transactionList.innerHTML = '<p class="text-sm text-gray-600">Loading transactions...</p>';
+  accountList.innerHTML = '<p class="text-muted">Loading accounts...</p>';
+  transactionList.innerHTML = '<p class="text-muted">Loading transactions...</p>';
   try {
     const accounts = await fetchJson('/api/accounts');
     const transactions = await fetchJson('/api/transactions');
     accountList.innerHTML = accounts.map(account => `
-      <div class="p-4 border rounded-lg bg-slate-50">
-        <h4 class="font-semibold">${account.type}</h4>
-        <p class="text-sm text-gray-600">Balance: ${formatCurrency(account.balance, account.currency)}</p>
+      <div class="list-item">
+        <div class="list-item-header">
+          <span class="list-item-title">${account.type}</span>
+          <span class="list-item-value">${formatCurrency(account.balance, account.currency)}</span>
+        </div>
       </div>
-    `).join('') || '<p class="text-sm text-gray-600">No accounts found.</p>';
+    `).join('') || '<p class="text-muted">No accounts found.</p>';
 
     transactionList.innerHTML = transactions.map(tx => `
-      <div class="p-4 border rounded-lg bg-slate-50">
-        <p class="font-medium">${tx.description}</p>
-        <p class="text-sm text-gray-600">${tx.type.toUpperCase()} • ${new Date(tx.created_at).toLocaleDateString()}</p>
-        <p class="mt-2 font-semibold ${tx.amount >= 0 ? 'text-green-700' : 'text-red-700'}">${tx.amount >= 0 ? '+' : ''}${formatCurrency(Math.abs(tx.amount))}</p>
+      <div class="list-item">
+        <div class="list-item-header">
+          <span class="list-item-title">${tx.description}</span>
+          <span class="list-item-value ${tx.amount >= 0 ? 'positive' : 'negative'}">
+            ${tx.amount >= 0 ? '+' : ''}${formatCurrency(Math.abs(tx.amount))}
+          </span>
+        </div>
+        <div class="list-item-meta">
+          <span>${tx.type.toUpperCase()}</span>
+          <span>${new Date(tx.created_at).toLocaleDateString()}</span>
+        </div>
       </div>
-    `).join('') || '<p class="text-sm text-gray-600">No transactions yet.</p>';
+    `).join('') || '<p class="text-muted">No transactions yet.</p>';
   } catch (error) {
-    accountList.innerHTML = '<p class="text-sm text-red-600">Unable to load accounts.</p>';
-    transactionList.innerHTML = '<p class="text-sm text-red-600">Unable to load transactions.</p>';
+    accountList.innerHTML = '<p class="text-error">Unable to load accounts.</p>';
+    transactionList.innerHTML = '<p class="text-error">Unable to load transactions.</p>';
   }
 }
 
 async function loadInsurance() {
-  insuranceList.innerHTML = '<p class="text-sm text-gray-600">Loading insurance requests...</p>';
+  insuranceList.innerHTML = '<p class="text-muted">Loading insurance requests...</p>';
   try {
     const requests = await fetchJson('/api/insurance');
     insuranceList.innerHTML = requests.map(item => `
-      <div class="p-4 border rounded-lg bg-slate-50">
-        <div class="flex justify-between gap-4">
-          <div>
-            <p class="font-semibold">${item.full_name}</p>
-            <p class="text-sm text-gray-600">Status: ${item.status}</p>
-          </div>
-          <div class="text-right text-sm text-gray-600">
-            <p>${item.created_at ? new Date(item.created_at).toLocaleString() : ''}</p>
-            <p>${item.email_sent ? 'Email sent' : 'Email pending'}</p>
-          </div>
+      <div class="list-item">
+        <div class="list-item-header">
+          <span class="list-item-title">${item.full_name}</span>
+          <span class="list-item-value">${item.status}</span>
         </div>
-        <div class="mt-2 text-sm">
-          <p>Age: ${item.age || '-'}</p>
-          <p>Premium: ${item.premium ? formatCurrency(item.premium) : '-'}</p>
+        <div class="list-item-meta">
+          <span>Age: ${item.age || '-'} | Premium: ${item.premium ? formatCurrency(item.premium) : '-'}</span>
+          <span>${item.email_sent ? 'Email sent' : 'Pending'}</span>
         </div>
       </div>
-    `).join('') || '<p class="text-sm text-gray-600">No insurance requests yet.</p>';
+    `).join('') || '<p class="text-muted">No insurance requests yet.</p>';
   } catch (error) {
-    insuranceList.innerHTML = '<p class="text-sm text-red-600">Unable to load insurance requests.</p>';
+    insuranceList.innerHTML = '<p class="text-error">Unable to load insurance requests.</p>';
   }
 }
 
@@ -168,14 +167,14 @@ insuranceForm.addEventListener('submit', async event => {
     submitBtn.disabled = true;
     submitBtn.textContent = 'Submitting...';
   }
-  insuranceResult.innerHTML = '<span class="text-blue-600">Submitting your request...</span>';
+  insuranceResult.innerHTML = '<span class="text-muted">Submitting your request...</span>';
 
   const fullName = document.getElementById('insurance-fullname').value;
   const email = document.getElementById('insurance-email').value;
   const documentFile = document.getElementById('insurance-document').files[0];
 
   if (!documentFile) {
-    insuranceResult.innerHTML = '<span class="text-red-600">Please upload a document file.</span>';
+    insuranceResult.innerHTML = '<span class="text-error">Please upload a document file.</span>';
     if (submitBtn) {
       submitBtn.disabled = false;
       submitBtn.textContent = 'Submit Request';
@@ -196,18 +195,18 @@ insuranceForm.addEventListener('submit', async event => {
     const result = await response.json();
 
     if (result.error) {
-      insuranceResult.innerHTML = `<span class="text-red-600">Error: ${result.error}</span>`;
+      insuranceResult.innerHTML = `<span class="text-error">Error: ${result.error}</span>`;
       return;
     }
 
-    insuranceResult.innerHTML = `<span class="text-green-600">Request submitted successfully. Your request is being processed.</span>`;
+    insuranceResult.innerHTML = `<span class="text-success">Request submitted successfully. Your request is being processed.</span>`;
     insuranceForm.reset();
     // Give a moment for the user to read the success message before reloading
     setTimeout(() => {
         loadInsurance();
     }, 1000);
   } catch (error) {
-    insuranceResult.innerHTML = '<span class="text-red-600">Failed to submit insurance request. Try again later.</span>';
+    insuranceResult.innerHTML = '<span class="text-error">Failed to submit insurance request. Try again later.</span>';
   } finally {
     if (submitBtn) {
       submitBtn.disabled = false;
