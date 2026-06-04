@@ -1,0 +1,5 @@
+location = "Central India"
+prefix = "sinan"
+resource_group_name = "sinan-rg1"
+postgres_admin_password = "Muhammed@2003"
+email_password = "xuvi kvrm uqij eqil"

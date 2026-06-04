@@ -1,0 +1,6 @@
+location = "eastus2"
+prefix = "sinan"
+resource_group_name = "sinan-rg1"
+postgres_admin_password = "<postgres-password>"
+form_recognizer_api_key = "<form-recognizer-key>"
+email_password = "<gmail-app-password>"

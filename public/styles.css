@@ -1,0 +1,46 @@
+:root {
+  --brand: #2563eb;
+  --surface: #ffffff;
+  --surface-muted: #f8fafc;
+  --text: #111827;
+  --muted: #6b7280;
+}
+
+body {
+  font-family: Inter, system-ui, sans-serif;
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
+header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.card {
+  border: 1px solid #e5e7eb;
+  border-radius: 1rem;
+}
+
+.btn-primary {
+  background-color: var(--brand);
+  border-color: var(--brand);
+  color: white;
+}
+
+.btn-secondary {
+  background-color: white;
+  border-color: #d1d5db;
+  color: var(--text);
+}
+
+.input,
+.file-input {
+  width: 100%;
+}
+
+#insurance-result,
+#insurance-status {
+  min-height: 1.5rem;
+}
