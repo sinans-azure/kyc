@@ -43,6 +43,10 @@ async function loadDashboard() {
   try {
     const accounts = await fetchJson('/api/accounts');
     const transactions = await fetchJson('/api/transactions');
+
+    if (accounts.error) throw new Error(accounts.error);
+    if (transactions.error) throw new Error(transactions.error);
+
     accountList.innerHTML = accounts.map(account => `
       <div class="list-item">
         <div class="list-item-header">
@@ -76,6 +80,8 @@ async function loadInsurance() {
   insuranceList.innerHTML = '<p class="text-muted">Loading insurance requests...</p>';
   try {
     const requests = await fetchJson('/api/insurance');
+    if (requests.error) throw new Error(requests.error);
+
     insuranceList.innerHTML = requests.map(item => `
       <div class="list-item">
         <div class="list-item-header">

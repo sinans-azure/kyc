@@ -18,7 +18,13 @@ const storageAccountName = process.env.STORAGE_ACCOUNT_NAME;
 const storageAccountKey = process.env.STORAGE_ACCOUNT_KEY;
 const storageContainerName = process.env.STORAGE_CONTAINER_NAME || 'insurance-docs';
 const ocrFunctionUrl = process.env.OCR_FUNCTION_URL;
-const pool = new Pool({ connectionString: process.env.POSTGRES_CONNECTION_STRING });
+
+const dbConfig = { connectionString: process.env.POSTGRES_CONNECTION_STRING };
+// Azure PostgreSQL requires SSL. We configure rejectUnauthorized for the pg module.
+if (process.env.POSTGRES_CONNECTION_STRING && process.env.POSTGRES_CONNECTION_STRING.includes('sslmode=require')) {
+  dbConfig.ssl = { rejectUnauthorized: false };
+}
+const pool = new Pool(dbConfig);
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -209,6 +215,10 @@ app.get('*', (req, res) => {
 
 const port = process.env.PORT || 8080;
 app.listen(port, async () => {
+  if (!process.env.POSTGRES_CONNECTION_STRING) {
+    console.error('⚠️ WARNING: POSTGRES_CONNECTION_STRING is not set in the environment variables. Database connections will fail.');
+  }
+
   try {
     await ensureSchema();
     console.log('Database schema verified.');
