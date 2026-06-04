@@ -185,7 +185,7 @@ resource "azurerm_linux_web_app" "app" {
     "STORAGE_ACCOUNT_NAME"       = azurerm_storage_account.storage.name
     "STORAGE_ACCOUNT_KEY"        = azurerm_storage_account.storage.primary_access_key
     "STORAGE_CONTAINER_NAME"     = azurerm_storage_container.insurance_docs.name
-    "POSTGRES_CONNECTION_STRING" = "postgresql://${var.postgres_admin_username}:${var.postgres_admin_password}@${azurerm_postgresql_flexible_server.postgres.fqdn}:5432/${var.postgres_db_name}?sslmode=require" # Added sslmode=require
+    "POSTGRES_CONNECTION_STRING" = "postgresql://${var.postgres_admin_username}:${urlencode(var.postgres_admin_password)}@${azurerm_postgresql_flexible_server.postgres.fqdn}:5432/${var.postgres_db_name}?sslmode=require" # Added sslmode=require
     "OCR_FUNCTION_URL"           = "https://${local.function_app_name}.azurewebsites.net/api/ocr"
     "FORM_RECOGNIZER_ENDPOINT"   = azurerm_cognitive_account.form_recognizer.endpoint # Note: If you privatize Form Recognizer, ensure this endpoint resolves via private DNS
   }
@@ -218,7 +218,7 @@ resource "azurerm_linux_function_app" "function" {
     "SERVICE_BUS_CONNECTION_STRING" = azurerm_servicebus_namespace.sb.default_primary_connection_string
     "EMAIL_QUEUE_NAME"              = var.email_queue_name
     "FORM_RECOGNIZER_API_KEY"       = azurerm_cognitive_account.form_recognizer.primary_access_key
-    "POSTGRES_CONNECTION_STRING"    = "postgresql://${var.postgres_admin_username}:${var.postgres_admin_password}@${azurerm_postgresql_flexible_server.postgres.fqdn}:5432/${var.postgres_db_name}?sslmode=require"
+    "POSTGRES_CONNECTION_STRING"    = "postgresql://${var.postgres_admin_username}:${urlencode(var.postgres_admin_password)}@${azurerm_postgresql_flexible_server.postgres.fqdn}:5432/${var.postgres_db_name}?sslmode=require"
     "EMAIL_USER"                    = var.email_user
     "EMAIL_PASSWORD"                = var.email_password
   }

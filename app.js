@@ -109,7 +109,7 @@ function getBlobServiceClient() {
 async function uploadToBlob(blobName, buffer, contentType) {
   const blobServiceClient = getBlobServiceClient();
   const containerClient = blobServiceClient.getContainerClient(storageContainerName);
-  await containerClient.createIfNotExists({ access: 'private' });
+  await containerClient.createIfNotExists();
   const blockBlob = containerClient.getBlockBlobClient(blobName);
   await blockBlob.uploadData(buffer, { blobHTTPHeaders: { blobContentType: contentType } });
   return blobName;
